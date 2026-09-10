@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Busya 2048</title>
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --bg-body: #faf8ef;
+            --text-main: #776e65;
+            --text-light: #f9f6f2;
+            --bg-board: #bbada0;
+            --bg-cell-empty: rgba(238, 228, 218, 0.35);
+            --bg-btn: #8f7a66;
+            --bg-btn-hover: #9f8b77;
+            --bg-btn-active: #7f6a56;
+            --bg-modal: rgba(255, 255, 255, 0.95);
+            --border-modal: #eee4da;
+            
+            /* Tile Colors */
+            --tile-2: #eee4da;
+            --tile-4: #ede0c8;
+            --tile-8: #f2b179;
+            --tile-16: #f59563;
+            --tile-32: #f67c5f;
+            --tile-64: #f65e3b;
+            --tile-128: #edcf72;
+            --tile-256: #edcc61;
+            --tile-512: #edc850;
+            --tile-1024: #edc53f;
+            --tile-2048: #edc22e;
+            --tile-super: #3c3a32;
+
+            --grid-size: 4; 
+            --gap: 8px; 
+        }
+
+        [data-theme="dark"] {
+            /* Dark Theme Variables */
+            --bg-body: #1a1a1a;
+            --text-main: #e0e0e0;
+            --bg-board: #333333;
+            --bg-cell-empty: rgba(255, 255, 255, 0.1);
+            --bg-btn: #555555;
+            --bg-btn-hover: #666666;
+            --bg-btn-active: #444444;
+            --bg-modal: rgba(40, 40, 40, 0.95);
+            --border-modal: #555;
+            
+            --tile-2: #4a453f;
+            --tile-4: #524b42;
+        }
+
+        /* Custom Theme applies inline styles to root, so no class needed here */
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            touch-action: none;
+            overflow: hidden;
+            padding: 10px;
+        }
+
+        /* RTL support for Arabic, Hebrew, Persian */
+        body[dir="rtl"] {
+            direction: rtl;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            gap: 15px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-main);
+            padding: 5px;
+            transition: transform 0.1s;
+        }
+        
+        .btn-icon:active { transform: scale(0.9); }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .btn {
+            background-color: var(--bg-btn);
+            color: var(--text-light);
+            border: none;
+            border-radius: 6px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .btn:hover { background-color: var(--bg-btn-hover); }
+        .btn:active { background-color: var(--bg-btn-active); transform: scale(0.95); }
+        
+        .btn.btn-stop { background-color: #d9534f; }
+        .btn.btn-stop:hover { background-color: #c9302c; }
+        .btn.btn-success { background-color: #5cb85c; }
+        .btn.btn-success:hover { background-color: #4cae4c; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .stat-box {
+            background-color: var(--bg-board);
+            color: var(--text-light);
+            border-radius: 6px;
+            padding: 8px 5px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+            opacity: 0.8;
+            margin-bottom: 2px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .board-wrapper {
+            position: relative;
+            background-color: var(--bg-board);
+            border-radius: 10px;
+            padding: var(--gap);
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            touch-action: none;
+        }
+
+        .grid-background {
+            display: grid;
+            grid-template-columns: repeat(var(--grid-size), 1fr);
+            grid-template-rows: repeat(var(--grid-size), 1fr);
+            gap: var(--gap);
+            width: 100%;
+            height: 100%;
+        }
+
+        .grid-cell {
+            background-color: var(--bg-cell-empty);
+            border-radius: 4px;
+        }
+
+        .tile-container {
+            position: absolute;
+            top: var(--gap);
+            left: var(--gap);
+            right: var(--gap);
+            bottom: var(--gap);
+            pointer-events: none;
+        }
+
+        .tile {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border-radius: 4px;
+            z-index: 10;
+            transition: transform 0.15s ease-in-out;
+            width: calc((100% - (var(--gap) * (var(--grid-size) - 1))) / var(--grid-size));
+            height: calc((100% - (var(--gap) * (var(--grid-size) - 1))) / var(--grid-size));
+        }
+
+        .tile-inner {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .tile-new .tile-inner { animation: appear 0.2s ease-in; }
+        .tile-merged .tile-inner { animation: pop 0.2s ease-in-out; z-index: 20;}
+
+        @keyframes appear { 0% { opacity: 0; transform: scale(0); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+        .val-2 { background-color: var(--tile-2); color: #776e65; }
+        .val-4 { background-color: var(--tile-4); color: #776e65; }
+        .val-8 { background-color: var(--tile-8); color: #f9f6f2; }
+        .val-16 { background-color: var(--tile-16); color: #f9f6f2; }
+        .val-32 { background-color: var(--tile-32); color: #f9f6f2; }
+        .val-64 { background-color: var(--tile-64); color: #f9f6f2; }
+        .val-128 { background-color: var(--tile-128); color: #f9f6f2; }
+        .val-256 { background-color: var(--tile-256); color: #f9f6f2; }
+        .val-512 { background-color: var(--tile-512); color: #f9f6f2; }
+        .val-1024 { background-color: var(--tile-1024); color: #f9f6f2; }
+        .val-2048 { background-color: var(--tile-2048); color: #f9f6f2; box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.33); }
+        .val-super { background-color: var(--tile-super); color: #f9f6f2; }
+
+        .footer {
+            margin-top: auto;
+            text-align: center;
+            font-size: 12px;
+            opacity: 0.7;
+            padding: 10px;
+        }
+
+        .footer a { color: var(--text-main); font-weight: bold; text-decoration: none;}
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: var(--bg-modal);
+            border: 2px solid var(--border-modal);
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 350px;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            color: var(--text-main);
+        }
+
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-modal);
+        }
+        .settings-row:last-child { border-bottom: none; }
+        
+        select {
+            padding: 5px;
+            border-radius: 5px;
+            background: var(--bg-btn);
+            color: var(--text-light);
+            border: none;
+            outline: none;
+            font-weight: bold;
+        }
+        
+        .color-picker-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+        
+        input[type="color"] {
+            border: none;
+            border-radius: 4px;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            padding: 0;
+            background: none;
+        }
+
+        .lang-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .lang-btn {
+            background: var(--bg-btn);
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .lang-btn:active { transform: scale(0.9); }
+
+        #easterEgg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        #easterEgg img {
+            max-width: 90%;
+            max-height: 70vh;
+            border-radius: 10px;
+            box-shadow: 0 0 50px rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+        #easterEgg h1 { font-size: 3rem; font-family: cursive; text-shadow: 2px 2px 10px rgba(255,255,255,0.5); }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="header">
+            <div class="header-buttons">
+                <button class="btn-icon" id="btnTheme">☀️</button>
+                <button class="btn-icon" id="btnLang">🇷🇺</button>
+            </div>
+            <div class="header-buttons">
+                <button class="btn-icon" id="btnSettings">⚙️</button>
+            </div>
+        </div>
+
+        <div class="controls" id="controlPanel">
+            <button class="btn" id="btnRestart" data-i18n="restart">Начать заново</button>
+            <button class="btn" id="btnHint" data-i18n="hint">Один ход за меня</button>
+            <button class="btn" id="btnAuto" data-i18n="autoPlay">Играть за меня</button>
+            <button class="btn btn-stop hidden" id="btnStopAuto" data-i18n="stopAuto">Алгоритм стоп</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-title" data-i18n="time">ВРЕМЯ</div>
+                <div class="stat-value" id="valTime">00:00:00</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title" data-i18n="moves">ХОД</div>
+                <div class="stat-value" id="valMoves">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title" data-i18n="score">СЧЁТ</div>
+                <div class="stat-value" id="valScore">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title" data-i18n="record">РЕКОРД</div>
+                <div class="stat-value" id="valBestTile">0</div>
+            </div>
+        </div>
+
+        <div class="board-wrapper" id="boardArea">
+            <div class="grid-background" id="gridBg"></div>
+            <div class="tile-container" id="tileContainer"></div>
+        </div>
+
+        <div class="footer">
+            <span data-i18n="footerText">Мой проект на GitHub - </span><br>
+            <a href="https://github.com/berestnevnikolaj671-kot/Busya-2048-game" target="_blank">https://github.com/berestnevnikolaj671-kot/Busya-2048-game</a>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-title" data-i18n="settingsTitle">Настройки</div>
+            
+            <button class="btn" id="btnShare" data-i18n="share">Поделиться приложением</button>
+            <button class="btn" id="btnRate" data-i18n="rate">Оценить приложение</button>
+            <button class="btn" id="btnDownload" data-i18n="download">Скачать HTML</button>
+            <button class="btn btn-success" id="btnOpenThemeModal" data-i18n="createTheme">Создать тему</button>
+            
+            <div class="settings-row">
+                <strong data-i18n="boardSize">Размер поля:</strong>
+                <select id="sizeSelector">
+                    <option value="2">2×2</option>
+                    <option value="3">3×3</option>
+                    <option value="4" selected>4×4</option>
+                    <option value="5">5×5</option>
+                    <option value="6">6×6</option>
+                    <option value="7">7×7</option>
+                    <option value="8">8×8</option>
+                    <option value="9">9×9</option>
+                </select>
+            </div>
+            
+            <div class="settings-row" style="justify-content: center; cursor: pointer; user-select: none;" id="versionText">
+                <span style="opacity: 0.6; font-size: 12px;"><span data-i18n="version">Версия приложения:</span> 1.0.2</span>
+            </div>
+
+            <button class="btn btn-stop" id="btnCloseSettings" data-i18n="close">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Custom Theme Modal -->
+    <div class="modal-overlay" id="customThemeModal">
+        <div class="modal-content">
+            <div class="modal-title" data-i18n="customTheme">Своя тема</div>
+            
+            <div class="color-picker-row">
+                <span data-i18n="themeBg">Фон</span>
+                <input type="color" id="colorBg" value="#faf8ef">
+            </div>
+            <div class="color-picker-row">
+                <span data-i18n="themeText">Текст</span>
+                <input type="color" id="colorText" value="#776e65">
+            </div>
+            <div class="color-picker-row">
+                <span data-i18n="themeBoard">Поле</span>
+                <input type="color" id="colorBoard" value="#bbada0">
+            </div>
+            <div class="color-picker-row">
+                <span data-i18n="themeCell">Пустая ячейка</span>
+                <input type="color" id="colorCell" value="#eee4da">
+            </div>
+            <div class="color-picker-row">
+                <span data-i18n="themeBtn">Кнопки</span>
+                <input type="color" id="colorBtn" value="#8f7a66">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-success" id="btnApplyTheme" data-i18n="apply">Применить</button>
+                <button class="btn btn-stop" id="btnCancelTheme" data-i18n="cancel">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Language Modal -->
+    <div class="modal-overlay" id="langModal">
+        <div class="modal-content">
+            <div class="modal-title" data-i18n="settingsTitle">Язык</div>
+            <div class="lang-grid" id="langGrid">
+                <!-- Buttons injected by JS -->
+            </div>
+            <button class="btn btn-stop" id="btnCloseLang" data-i18n="close">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- AI Modal -->
+    <div class="modal-overlay" id="aiModal">
+        <div class="modal-content">
+            <div class="modal-title" data-i18n="aiModalMsg" style="font-size: 16px;">Сохранить процесс алгоритма или вернуться к последнему своему ходу?</div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-success" id="btnKeepAi" data-i18n="keep">Сохранить</button>
+                <button class="btn btn-stop" id="btnRevertAi" data-i18n="revert">Вернуться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Easter Egg -->
+    <div id="easterEgg">
+        <img src="IMG-20260815-WA0002.jpg" alt="Busya" onerror="this.style.display='none'">
+        <h1>By BusyaTM</h1>
+    </div>
+
+    <script>
+        // Massive exact translation dictionary
+        const i18n = {
+            ru: { flag: "🇷🇺", dir: "ltr", restart: "Начать заново", hint: "Один ход за меня", autoPlay: "Играть за меня", stopAuto: "Алгоритм стоп", time: "ВРЕМЯ", moves: "ХОД", score: "СЧЁТ", record: "РЕКОРД", settingsTitle: "Настройки", share: "Поделиться приложением", rate: "Оценить приложение", download: "Скачать HTML", boardSize: "Размер поля:", close: "Закрыть", aiModalMsg: "Сохранить процесс алгоритма или вернуться к последнему своему ходу?", keep: "Сохранить", revert: "Вернуться", footerText: "Мой проект на GitHub - ", customTheme: "Своя тема", createTheme: "Создать тему", themeBg: "Фон", themeText: "Текст", themeBoard: "Поле", themeCell: "Пустая ячейка", themeBtn: "Кнопки", apply: "Применить", cancel: "Отмена", version: "Версия приложения:" },
+            en: { flag: "🇬🇧", dir: "ltr", restart: "Restart", hint: "Hint (1 move)", autoPlay: "Auto-play", stopAuto: "Stop AI", time: "TIME", moves: "MOVES", score: "SCORE", record: "RECORD", settingsTitle: "Settings", share: "Share App", rate: "Rate App", download: "Download HTML", boardSize: "Board Size:", close: "Close", aiModalMsg: "Keep AI progress or revert to your last move?", keep: "Keep", revert: "Revert", footerText: "My project on GitHub - ", customTheme: "Custom Theme", createTheme: "Create Theme", themeBg: "Background", themeText: "Text", themeBoard: "Board", themeCell: "Empty Cell", themeBtn: "Buttons", apply: "Apply", cancel: "Cancel", version: "App Version:" },
+            fr: { flag: "🇨🇵", dir: "ltr", restart: "Recommencer", hint: "Un coup pour moi", autoPlay: "Jouer pour moi", stopAuto: "Arrêt IA", time: "TEMPS", moves: "COUPS", score: "SCORE", record: "RECORD", settingsTitle: "Paramètres", share: "Partager l'app", rate: "Évaluer l'app", download: "Télécharger HTML", boardSize: "Taille du plateau:", close: "Fermer", aiModalMsg: "Garder la progression de l'IA ou annuler?", keep: "Garder", revert: "Annuler", footerText: "Mon projet sur GitHub - ", customTheme: "Thème perso", createTheme: "Créer un thème", themeBg: "Fond", themeText: "Texte", themeBoard: "Plateau", themeCell: "Cellule vide", themeBtn: "Boutons", apply: "Appliquer", cancel: "Annuler", version: "Version de l'app:" },
+            zh: { flag: "🇨🇳", dir: "ltr", restart: "重新开始", hint: "提示一步", autoPlay: "自动播放", stopAuto: "停止算法", time: "时间", moves: "步数", score: "分数", record: "最高分", settingsTitle: "设置", share: "分享应用", rate: "评价应用", download: "下载HTML", boardSize: "棋盘大小:", close: "关闭", aiModalMsg: "保留AI进度还是恢复到上一步？", keep: "保留", revert: "恢复", footerText: "我的GitHub项目 - ", customTheme: "自定义主题", createTheme: "创建主题", themeBg: "背景", themeText: "文本", themeBoard: "棋盘", themeCell: "空白格", themeBtn: "按钮", apply: "应用", cancel: "取消", version: "应用版本:" },
+            ci: { flag: "🇨🇮", dir: "ltr", restart: "Recommencer", hint: "Un coup pour moi", autoPlay: "Jouer pour moi", stopAuto: "Arrêt IA", time: "TEMPS", moves: "COUPS", score: "SCORE", record: "RECORD", settingsTitle: "Paramètres", share: "Partager l'app", rate: "Évaluer", download: "Télécharger HTML", boardSize: "Taille:", close: "Fermer", aiModalMsg: "Garder la progression de l'IA ou annuler?", keep: "Garder", revert: "Annuler", footerText: "Mon projet GitHub - ", customTheme: "Thème perso", createTheme: "Créer thème", themeBg: "Fond", themeText: "Texte", themeBoard: "Plateau", themeCell: "Cellule", themeBtn: "Boutons", apply: "Appliquer", cancel: "Annuler", version: "Version:" },
+            es: { flag: "🇪🇦", dir: "ltr", restart: "Reiniciar", hint: "Pista", autoPlay: "Auto-juego", stopAuto: "Detener IA", time: "TIEMPO", moves: "MOV.", score: "PUNTOS", record: "RÉCORD", settingsTitle: "Ajustes", share: "Compartir", rate: "Valorar", download: "Descargar HTML", boardSize: "Tamaño:", close: "Cerrar", aiModalMsg: "¿Mantener progreso de la IA o deshacer?", keep: "Mantener", revert: "Deshacer", footerText: "Mi proyecto en GitHub - ", customTheme: "Tema propio", createTheme: "Crear tema", themeBg: "Fondo", themeText: "Texto", themeBoard: "Tablero", themeCell: "Celda vacía", themeBtn: "Botones", apply: "Aplicar", cancel: "Cancelar", version: "Versión:" },
+            de: { flag: "🇩🇪", dir: "ltr", restart: "Neustart", hint: "Ein Zug für mich", autoPlay: "Automatisch spielen", stopAuto: "KI stoppen", time: "ZEIT", moves: "ZÜGE", score: "PUNKTE", record: "REKORD", settingsTitle: "Einstellungen", share: "App teilen", rate: "App bewerten", download: "HTML herunterladen", boardSize: "Spielfeldgröße:", close: "Schließen", aiModalMsg: "KI-Fortschritt behalten oder zurücksetzen?", keep: "Behalten", revert: "Zurücksetzen", footerText: "Mein Projekt auf GitHub - ", customTheme: "Eigenes Design", createTheme: "Design erstellen", themeBg: "Hintergrund", themeText: "Text", themeBoard: "Spielfeld", themeCell: "Leere Zelle", themeBtn: "Tasten", apply: "Anwenden", cancel: "Abbrechen", version: "App-Version:" },
+            cs: { flag: "🇨🇿", dir: "ltr", restart: "Restartovat", hint: "Nápověda", autoPlay: "Hrát za mě", stopAuto: "Zastavit AI", time: "ČAS", moves: "TAHY", score: "SKÓRE", record: "REKORD", settingsTitle: "Nastavení", share: "Sdílet", rate: "Ohodnotit", download: "Stáhnout HTML", boardSize: "Velikost:", close: "Zavřít", aiModalMsg: "Ponechat postup AI nebo se vrátit?", keep: "Ponechat", revert: "Vrátit se", footerText: "Můj projekt na GitHubu - ", customTheme: "Vlastní motiv", createTheme: "Vytvořit motiv", themeBg: "Pozadí", themeText: "Text", themeBoard: "Deska", themeCell: "Buňka", themeBtn: "Tlačítka", apply: "Použít", cancel: "Zrušit", version: "Verze:" },
+            et: { flag: "🇪🇪", dir: "ltr", restart: "Uuesti", hint: "Vihje", autoPlay: "Mängi minu eest", stopAuto: "Peata tehisintellekt", time: "AEG", moves: "KÄIGUD", score: "SKOOR", record: "REKORD", settingsTitle: "Seaded", share: "Jaga", rate: "Hinda", download: "Laadi alla HTML", boardSize: "Suurus:", close: "Sulge", aiModalMsg: "Kas hoida tehisintellekti progressi või minna tagasi?", keep: "Hoia", revert: "Tagasi", footerText: "Minu projekt GitHubis - ", customTheme: "Kohandatud teema", createTheme: "Loo teema", themeBg: "Taust", themeText: "Tekst", themeBoard: "Laud", themeCell: "Lahter", themeBtn: "Nupud", apply: "Rakenda", cancel: "Tühista", version: "Versioon:" },
+            fi: { flag: "🇫🇮", dir: "ltr", restart: "Uudelleen", hint: "Vinkki", autoPlay: "Pelaa puolestani", stopAuto: "Pysäytä tekoäly", time: "AIKA", moves: "SIIRROT", score: "PISTEET", record: "ENNÄTYS", settingsTitle: "Asetukset", share: "Jaa", rate: "Arvostele", download: "Lataa HTML", boardSize: "Koko:", close: "Sulje", aiModalMsg: "Säilytä tekoälyn edistys vai palaa?", keep: "Säilytä", revert: "Palaa", footerText: "Projektini GitHubissa - ", customTheme: "Oma teema", createTheme: "Luo teema", themeBg: "Tausta", themeText: "Teksti", themeBoard: "Lauta", themeCell: "Solu", themeBtn: "Painikkeet", apply: "Käytä", cancel: "Peruuta", version: "Versio:" },
+            da: { flag: "🇩🇰", dir: "ltr", restart: "Genstart", hint: "Tip", autoPlay: "Spil for mig", stopAuto: "Stop AI", time: "TID", moves: "TRÆK", score: "SCORE", record: "REKORD", settingsTitle: "Indstillinger", share: "Del", rate: "Vurder", download: "Download HTML", boardSize: "Størrelse:", close: "Luk", aiModalMsg: "Behold AI fremskridt eller gå tilbage?", keep: "Behold", revert: "Tilbage", footerText: "Mit projekt på GitHub - ", customTheme: "Eget tema", createTheme: "Opret tema", themeBg: "Baggrund", themeText: "Tekst", themeBoard: "Bræt", themeCell: "Celle", themeBtn: "Knapper", apply: "Anvend", cancel: "Annuller", version: "Version:" },
+            fo: { flag: "🇫🇴", dir: "ltr", restart: "Byrja av nýggjum", hint: "Eitt fet", autoPlay: "Spæl fyri meg", stopAuto: "Steðga AI", time: "TÍÐ", moves: "FET", score: "STIG", record: "MET", settingsTitle: "Stillingar", share: "Deil", rate: "Met", download: "Tak niður HTML", boardSize: "Stødd:", close: "Lat aftur", aiModalMsg: "Varðveit AI ella far aftur?", keep: "Varðveit", revert: "Far aftur", footerText: "Mín verkætlan á GitHub - ", customTheme: "Egna tema", createTheme: "Ger tema", themeBg: "Bakgrund", themeText: "Tekstur", themeBoard: "Borð", themeCell: "Rúm", themeBtn: "Knappar", apply: "Nýt", cancel: "Angra", version: "Útgáva:" },
+            el: { flag: "🇬🇷", dir: "ltr", restart: "Επανεκκίνηση", hint: "Βοήθεια", autoPlay: "Αυτόματο", stopAuto: "Στοπ AI", time: "ΧΡΟΝΟΣ", moves: "ΚΙΝΗΣΕΙΣ", score: "ΣΚΟΡ", record: "ΡΕΚΟΡ", settingsTitle: "Ρυθμίσεις", share: "Κοινοποίηση", rate: "Βαθμολογία", download: "Λήψη HTML", boardSize: "Μέγεθος:", close: "Κλείσιμο", aiModalMsg: "Διατήρηση προόδου ή επιστροφή;", keep: "Διατήρηση", revert: "Επιστροφή", footerText: "Το έργο μου στο GitHub - ", customTheme: "Προσαρμοσμένο", createTheme: "Δημιουργία θέματος", themeBg: "Φόντο", themeText: "Κείμενο", themeBoard: "Πίνακας", themeCell: "Κελί", themeBtn: "Κουμπιά", apply: "Εφαρμογή", cancel: "Ακύρωση", version: "Έκδοση:" },
+            hr: { flag: "🇭🇷", dir: "ltr", restart: "Ponovno", hint: "Potez za mene", autoPlay: "Igraj umjesto mene", stopAuto: "Zaustavi AI", time: "VRIJEME", moves: "POTEZI", score: "REZULTAT", record: "REKORD", settingsTitle: "Postavke", share: "Podijeli", rate: "Ocijeni", download: "Preuzmi HTML", boardSize: "Veličina:", close: "Zatvori", aiModalMsg: "Zadrži napredak ili se vrati?", keep: "Zadrži", revert: "Vrati se", footerText: "Moj projekt na GitHubu - ", customTheme: "Prilagođena tema", createTheme: "Izradi temu", themeBg: "Pozadina", themeText: "Tekst", themeBoard: "Ploča", themeCell: "Ćelija", themeBtn: "Gumbi", apply: "Primijeni", cancel: "Odustani", version: "Verzija:" },
+            he: { flag: "🇮🇱", dir: "rtl", restart: "התחל מחדש", hint: "רמז", autoPlay: "משחק אוטומטי", stopAuto: "עצור בינה", time: "זמן", moves: "מהלכים", score: "ניקוד", record: "שיא", settingsTitle: "הגדרות", share: "שתף", rate: "דרג", download: "הורד HTML", boardSize: "גודל לוח:", close: "סגור", aiModalMsg: "לשמור התקדמות או לחזור?", keep: "שמור", revert: "חזור", footerText: "הפרויקט שלי ב-GitHub - ", customTheme: "עיצוב אישי", createTheme: "צור עיצוב", themeBg: "רקע", themeText: "טקסט", themeBoard: "לוח", themeCell: "תא", themeBtn: "כפתורים", apply: "החל", cancel: "ביטול", version: "גרסה:" },
+            is: { flag: "🇮🇸", dir: "ltr", restart: "Byrja aftur", hint: "Vísbending", autoPlay: "Spila fyrir mig", stopAuto: "Stöðva AI", time: "TÍMI", moves: "LEIKIR", score: "STIG", record: "MET", settingsTitle: "Stillingar", share: "Deila", rate: "Gefa einkunn", download: "Sækja HTML", boardSize: "Stærð:", close: "Loka", aiModalMsg: "Halda framförum eða afturkalla?", keep: "Halda", revert: "Afturkalla", footerText: "Verkefnið mitt á GitHub - ", customTheme: "Eigið þema", createTheme: "Búa til þema", themeBg: "Bakgrunnur", themeText: "Texti", themeBoard: "Borð", themeCell: "Reitur", themeBtn: "Hnappar", apply: "Virkja", cancel: "Hætta við", version: "Útgáfa:" },
+            it: { flag: "🇮🇹", dir: "ltr", restart: "Riavvia", hint: "Suggerimento", autoPlay: "Auto-gioco", stopAuto: "Ferma IA", time: "TEMPO", moves: "MOSSE", score: "PUNTI", record: "RECORD", settingsTitle: "Impostazioni", share: "Condividi", rate: "Valuta", download: "Scarica HTML", boardSize: "Dimensione:", close: "Chiudi", aiModalMsg: "Mantenere i progressi o annullare?", keep: "Mantieni", revert: "Annulla", footerText: "Il mio progetto su GitHub - ", customTheme: "Tema pers.", createTheme: "Crea tema", themeBg: "Sfondo", themeText: "Testo", themeBoard: "Tavolo", themeCell: "Cella", themeBtn: "Tasti", apply: "Applica", cancel: "Annulla", version: "Versione:" },
+            fa: { flag: "🇮🇷", dir: "rtl", restart: "شروع مجدد", hint: "راهنما", autoPlay: "بازی خودکار", stopAuto: "توقف هوش", time: "زمان", moves: "حرکات", score: "امتیاز", record: "رکورد", settingsTitle: "تنظیمات", share: "اشتراک", rate: "امتیازدهی", download: "دانلود HTML", boardSize: "اندازه:", close: "بستن", aiModalMsg: "حفظ پیشرفت یا بازگشت؟", keep: "حفظ", revert: "بازگشت", footerText: "پروژه من در گیت‌هاب - ", customTheme: "پوسته سفارشی", createTheme: "ایجاد پوسته", themeBg: "پس‌زمینه", themeText: "متن", themeBoard: "صفحه", themeCell: "سلول", themeBtn: "دکمه‌ها", apply: "اعمال", cancel: "لغو", version: "نسخه:" },
+            ja: { flag: "🇯🇵", dir: "ltr", restart: "再試行", hint: "ヒント", autoPlay: "自動プレイ", stopAuto: "AI停止", time: "時間", moves: "手", score: "スコア", record: "最高記録", settingsTitle: "設定", share: "共有", rate: "評価", download: "HTML保存", boardSize: "サイズ:", close: "閉じる", aiModalMsg: "AIの進行を保持しますか？", keep: "保持", revert: "戻す", footerText: "GitHubプロジェクト - ", customTheme: "カスタムテーマ", createTheme: "テーマ作成", themeBg: "背景", themeText: "テキスト", themeBoard: "ボード", themeCell: "空白セル", themeBtn: "ボタン", apply: "適用", cancel: "キャンセル", version: "バージョン:" },
+            ko: { flag: "🇰🇷", dir: "ltr", restart: "다시 시작", hint: "힌트", autoPlay: "자동 플레이", stopAuto: "AI 중지", time: "시간", moves: "이동", score: "점수", record: "최고 점수", settingsTitle: "설정", share: "공유", rate: "평가", download: "HTML 다운로드", boardSize: "크기:", close: "닫기", aiModalMsg: "진행 상황을 유지하시겠습니까?", keep: "유지", revert: "되돌리기", footerText: "내 GitHub 프로젝트 - ", customTheme: "사용자 테마", createTheme: "테마 생성", themeBg: "배경", themeText: "텍스트", themeBoard: "보드", themeCell: "빈 셀", themeBtn: "버튼", apply: "적용", cancel: "취소", version: "버전:" },
+            kp: { flag: "🇰🇵", dir: "ltr", restart: "다시 시작", hint: "힌트", autoPlay: "자동 플레이", stopAuto: "AI 중지", time: "시간", moves: "이동", score: "점수", record: "최고 점수", settingsTitle: "설정", share: "공유", rate: "평가", download: "HTML 다운로드", boardSize: "크기:", close: "닫기", aiModalMsg: "진행 상황을 유지하시겠습니까?", keep: "유지", revert: "되돌리기", footerText: "내 GitHub 프로젝트 - ", customTheme: "사용자 테마", createTheme: "테마 생성", themeBg: "배경", themeText: "텍스트", themeBoard: "보드", themeCell: "빈 셀", themeBtn: "버튼", apply: "적용", cancel: "취소", version: "버전:" },
+            kk: { flag: "🇰🇿", dir: "ltr", restart: "Қайта бастау", hint: "Кеңес", autoPlay: "Автоматты", stopAuto: "Тоқтату", time: "УАҚЫТ", moves: "ҚАДАМ", score: "ҰПАЙ", record: "РЕКОРД", settingsTitle: "Баптаулар", share: "Бөлісу", rate: "Бағалау", download: "HTML жүктеу", boardSize: "Өлшемі:", close: "Жабу", aiModalMsg: "Прогресті сақтау немесе қайтару?", keep: "Сақтау", revert: "Қайтару", footerText: "Менің жобам GitHub-та - ", customTheme: "Өз тақырыбым", createTheme: "Тақырып жасау", themeBg: "Фон", themeText: "Мәтін", themeBoard: "Тақта", themeCell: "Ұяшық", themeBtn: "Түймелер", apply: "Қолдану", cancel: "Болдырмау", version: "Нұсқа:" },
+            mk: { flag: "🇲🇰", dir: "ltr", restart: "Рестарт", hint: "Потег", autoPlay: "Автоматски", stopAuto: "Стоп ВИ", time: "ВРЕМЕ", moves: "ПОТЕЗИ", score: "РЕЗУЛТАТ", record: "РЕКОРД", settingsTitle: "Поставки", share: "Сподели", rate: "Оцени", download: "Симни HTML", boardSize: "Големина:", close: "Затвори", aiModalMsg: "Задржи напредок или врати?", keep: "Задржи", revert: "Врати", footerText: "Мојот проект на GitHub - ", customTheme: "Своја тема", createTheme: "Создај тема", themeBg: "Позадина", themeText: "Текст", themeBoard: "Табла", themeCell: "Клетка", themeBtn: "Копчиња", apply: "Примени", cancel: "Откажи", version: "Верзија:" },
+            cnr: { flag: "🇲🇪", dir: "ltr", restart: "Ponovo", hint: "Potez", autoPlay: "Igraj sam", stopAuto: "Stop AI", time: "VRIJEME", moves: "POTEZI", score: "REZULTAT", record: "REKORD", settingsTitle: "Podešavanja", share: "Podijeli", rate: "Ocijeni", download: "Preuzmi HTML", boardSize: "Veličina:", close: "Zatvori", aiModalMsg: "Zadrži progres ili vrati?", keep: "Zadrži", revert: "Vrati", footerText: "Moj projekat na GitHubu - ", customTheme: "Tvoja tema", createTheme: "Napravi temu", themeBg: "Pozadina", themeText: "Tekst", themeBoard: "Tabla", themeCell: "Polje", themeBtn: "Dugmad", apply: "Primijeni", cancel: "Otkaži", version: "Verzija:" },
+            no: { flag: "🇳🇴", dir: "ltr", restart: "Start på nytt", hint: "Hint", autoPlay: "Spill for meg", stopAuto: "Stopp AI", time: "TID", moves: "TREKK", score: "POENG", record: "REKORD", settingsTitle: "Innstillinger", share: "Del app", rate: "Vurder", download: "Last ned HTML", boardSize: "Størrelse:", close: "Lukk", aiModalMsg: "Behold AI-fremgang eller angre?", keep: "Behold", revert: "Angre", footerText: "Mitt prosjekt på GitHub - ", customTheme: "Egendefinert tema", createTheme: "Lag tema", themeBg: "Bakgrunn", themeText: "Tekst", themeBoard: "Brett", themeCell: "Celle", themeBtn: "Knapper", apply: "Bruk", cancel: "Avbryt", version: "Versjon:" },
+            nl: { flag: "🇳🇱", dir: "ltr", restart: "Herstarten", hint: "Tip", autoPlay: "Automatisch", stopAuto: "Stop AI", time: "TIJD", moves: "ZETTEN", score: "SCORE", record: "RECORD", settingsTitle: "Instellingen", share: "Delen", rate: "Beoordelen", download: "Download HTML", boardSize: "Grootte:", close: "Sluiten", aiModalMsg: "Voortgang behouden of ongedaan maken?", keep: "Behouden", revert: "Ongedaan maken", footerText: "Mijn project op GitHub - ", customTheme: "Eigen thema", createTheme: "Maak thema", themeBg: "Achtergrond", themeText: "Tekst", themeBoard: "Bord", themeCell: "Cel", themeBtn: "Knoppen", apply: "Toepassen", cancel: "Annuleren", version: "Versie:" },
+            mi: { flag: "🇳🇿", dir: "ltr", restart: "Tīmata anō", hint: "Awhina", autoPlay: "Tākaro aunoa", stopAuto: "Whakatū", time: "WĀ", moves: "NEKE", score: "PIRO", record: "REKOTI", settingsTitle: "Tautuhinga", share: "Toha", rate: "Arotake", download: "Tikiake HTML", boardSize: "Rahi:", close: "Kati", aiModalMsg: "Pupuri ahunga, whakakore ranei?", keep: "Pupuri", revert: "Whakakore", footerText: "Taku kaupapa i GitHub - ", customTheme: "Kaupapa ritenga", createTheme: "Waihanga", themeBg: "Papamuri", themeText: "Kuputuhi", themeBoard: "Papa", themeCell: "Pūtau", themeBtn: "Pātene", apply: "Tono", cancel: "Whakakore", version: "Putanga:" },
+            ro: { flag: "🇷🇴", dir: "ltr", restart: "Restart", hint: "Indiciu", autoPlay: "Joacă pentru mine", stopAuto: "Stop AI", time: "TIMP", moves: "MUTĂRI", score: "SCOR", record: "RECORD", settingsTitle: "Setări", share: "Distribuie", rate: "Evaluează", download: "Descarcă HTML", boardSize: "Mărime:", close: "Închide", aiModalMsg: "Păstrați progresul sau anulați?", keep: "Păstrează", revert: "Anulează", footerText: "Proiectul meu pe GitHub - ", customTheme: "Temă proprie", createTheme: "Creare temă", themeBg: "Fundal", themeText: "Text", themeBoard: "Tablă", themeCell: "Celulă", themeBtn: "Butoane", apply: "Aplică", cancel: "Anulează", version: "Versiune:" },
+            sv: { flag: "🇸🇪", dir: "ltr", restart: "Börja om", hint: "Tips", autoPlay: "Spela för mig", stopAuto: "Stoppa AI", time: "TID", moves: "DRAG", score: "POÄNG", record: "REKORD", settingsTitle: "Inställningar", share: "Dela", rate: "Betygsätt", download: "Ladda ner HTML", boardSize: "Storlek:", close: "Stäng", aiModalMsg: "Behåll framsteg eller ångra?", keep: "Behåll", revert: "Ångra", footerText: "Mitt projekt på GitHub - ", customTheme: "Eget tema", createTheme: "Skapa tema", themeBg: "Bakgrund", themeText: "Text", themeBoard: "Bräde", themeCell: "Cell", themeBtn: "Knappar", apply: "Använd", cancel: "Avbryt", version: "Version:" },
+            sr: { flag: "🇷🇸", dir: "ltr", restart: "Поново", hint: "Потез", autoPlay: "Аутоматски", stopAuto: "Стоп АИ", time: "ВРЕМЕ", moves: "ПОТЕЗИ", score: "РЕЗУЛТАТ", record: "РЕКОРД", settingsTitle: "Подешавања", share: "Подели", rate: "Оцени", download: "Преузми HTML", boardSize: "Величина:", close: "Затвори", aiModalMsg: "Задржи прогрес или врати?", keep: "Задржи", revert: "Врати", footerText: "Мој пројекат на GitHub-у - ", customTheme: "Твоја тема", createTheme: "Направи тему", themeBg: "Позадина", themeText: "Текст", themeBoard: "Табла", themeCell: "Поље", themeBtn: "Дугмад", apply: "Примени", cancel: "Откажи", version: "Верзија:" },
+            sk: { flag: "🇸🇰", dir: "ltr", restart: "Reštart", hint: "Nápoveda", autoPlay: "Hrať za mňa", stopAuto: "Zastaviť AI", time: "ČAS", moves: "ŤAHY", score: "SKÓRE", record: "REKORD", settingsTitle: "Nastavenia", share: "Zdieľať", rate: "Hodnotiť", download: "Stiahnuť HTML", boardSize: "Veľkosť:", close: "Zavrieć", aiModalMsg: "Ponechať postup alebo vrátiť?", keep: "Ponechať", revert: "Vrátiť", footerText: "Môj projekt na GitHub-e - ", customTheme: "Vlastná téma", createTheme: "Vytvoriť tému", themeBg: "Pozadie", themeText: "Text", themeBoard: "Hracia plocha", themeCell: "Bunka", themeBtn: "Tlačidlá", apply: "Použiť", cancel: "Zrušiť", version: "Verzia:" },
+            sl: { flag: "🇸🇮", dir: "ltr", restart: "Znova", hint: "Namig", autoPlay: "Igraj zame", stopAuto: "Ustavi AI", time: "ČAS", moves: "POTEZE", score: "REZULTAT", record: "REKORD", settingsTitle: "Nastavitve", share: "Deli", rate: "Oceni", download: "Prenesi HTML", boardSize: "Velikost:", close: "Zapri", aiModalMsg: "Obdrži napredek ali razveljavi?", keep: "Obdrži", revert: "Razveljavi", footerText: "Moj projekt na GitHubu - ", customTheme: "Tema po meri", createTheme: "Ustvari temo", themeBg: "Ozadje", themeText: "Besedilo", themeBoard: "Plošča", themeCell: "Celica", themeBtn: "Gumbi", apply: "Uporabi", cancel: "Prekliči", version: "Različica:" },
+            uk: { flag: "🇺🇦", dir: "ltr", restart: "Почати знову", hint: "Один хід за мене", autoPlay: "Грати за мене", stopAuto: "Зупинити алгоритм", time: "ЧАС", moves: "ХІД", score: "РАХУНОК", record: "РЕКОРД", settingsTitle: "Налаштування", share: "Поділитися", rate: "Оцінити", download: "Завантажити HTML", boardSize: "Розмір:", close: "Закрити", aiModalMsg: "Зберегти процес алгоритму чи повернутися?", keep: "Зберегти", revert: "Повернутися", footerText: "Мій проєкт на GitHub - ", customTheme: "Своя тема", createTheme: "Створити тему", themeBg: "Фон", themeText: "Текст", themeBoard: "Поле", themeCell: "Клітинка", themeBtn: "Кнопки", apply: "Застосувати", cancel: "Скасувати", version: "Версія:" },
+            uz: { flag: "🇺🇿", dir: "ltr", restart: "Qayta boshlash", hint: "Yordam", autoPlay: "Avtomatik o'yin", stopAuto: "AI to'xtatish", time: "VAQT", moves: "YURISH", score: "HISOB", record: "REKORD", settingsTitle: "Sozlamalar", share: "Ulashish", rate: "Baholash", download: "HTML yuklash", boardSize: "O'lcham:", close: "Yopish", aiModalMsg: "AI jarayonini saqlash yoki qaytish?", keep: "Saqlash", revert: "Qaytish", footerText: "Mening GitHub loyiham - ", customTheme: "O'z mavzum", createTheme: "Mavzu yaratish", themeBg: "Fon", themeText: "Matn", themeBoard: "Doska", themeCell: "Hujayra", themeBtn: "Tugmalar", apply: "Qo'llash", cancel: "Bekor qilish", version: "Versiya:" },
+            cy: { flag: "🏴󠁧󠁢󠁷󠁬󠁳󠁿", dir: "ltr", restart: "Ailgychwyn", hint: "Awgrym", autoPlay: "Chwarae awtomatig", stopAuto: "Stopio AI", time: "AMSER", moves: "SYMUDIADAU", score: "SGÔR", record: "RECORD", settingsTitle: "Gosodiadau", share: "Rhannu", rate: "Gwerthuso", download: "Lawrlwytho HTML", boardSize: "Maint:", close: "Cau", aiModalMsg: "Cadw cynnydd neu ddychwelyd?", keep: "Cadw", revert: "Dychwelyd", footerText: "Fy mhrosiect ar GitHub - ", customTheme: "Thema addasedig", createTheme: "Creu thema", themeBg: "Cefndir", themeText: "Testun", themeBoard: "Bwrdd", themeCell: "Cell", themeBtn: "Botymau", apply: "Defnyddio", cancel: "Canslo", version: "Fersiwn:" },
+            be: { flag: "🇧🇾", dir: "ltr", restart: "Пачаць нанова", hint: "Адзін ход за мяне", autoPlay: "Гуляць за мяне", stopAuto: "Спыніць алгарытм", time: "ЧАС", moves: "ХОД", score: "ЛІК", record: "РЭКОРД", settingsTitle: "Налады", share: "Падзяліцца", rate: "Ацаніць", download: "Спампаваць HTML", boardSize: "Памер:", close: "Закрыць", aiModalMsg: "Захаваць працэс ці вярнуцца?", keep: "Захаваць", revert: "Вярнуцца", footerText: "Мой праект на GitHub - ", customTheme: "Свая тэма", createTheme: "Стварыць тэму", themeBg: "Фон", themeText: "Тэкст", themeBoard: "Поле", themeCell: "Клетка", themeBtn: "Кнопкі", apply: "Ужыць", cancel: "Адмяніць", version: "Версія:" },
+            ka: { flag: "🇬🇪", dir: "ltr", restart: "თავიდან", hint: "მინიშნება", autoPlay: "ავტომატური", stopAuto: "AI-ს გაჩერება", time: "დრო", moves: "სვლა", score: "ქულა", record: "რეკორდი", settingsTitle: "პარამეტრები", share: "გაზიარება", rate: "შეფასება", download: "HTML ჩამოტვირთვა", boardSize: "ზომა:", close: "დახურვა", aiModalMsg: "შენახვა თუ დაბრუნება?", keep: "შენახვა", revert: "დაბრუნება", footerText: "ჩემი პროექტი GitHub-ზე - ", customTheme: "საკუთარი თემა", createTheme: "თემის შექმნა", themeBg: "ფონი", themeText: "ტექსტი", themeBoard: "დაფა", themeCell: "უჯრა", themeBtn: "ღილაკები", apply: "გამოყენება", cancel: "გაუქმება", version: "ვერსია:" },
+            bg: { flag: "🇧🇬", dir: "ltr", restart: "Отначало", hint: "Подсказка", autoPlay: "Автоматично", stopAuto: "Стоп AI", time: "ВРЕМЕ", moves: "ХОДОВЕ", score: "РЕЗУЛТАТ", record: "РЕКОРД", settingsTitle: "Настройки", share: "Сподели", rate: "Оцени", download: "Изтегли HTML", boardSize: "Размер:", close: "Затвори", aiModalMsg: "Запазване на прогреса или връщане?", keep: "Запази", revert: "Върни", footerText: "Моят проект в GitHub - ", customTheme: "Собствена тема", createTheme: "Създай тема", themeBg: "Фон", themeText: "Текст", themeBoard: "Табло", themeCell: "Клетка", themeBtn: "Бутони", apply: "Приложи", cancel: "Отказ", version: "Версия:" },
+            pt: { flag: "🇵🇹", dir: "ltr", restart: "Reiniciar", hint: "Dica", autoPlay: "Auto-jogar", stopAuto: "Parar IA", time: "TEMPO", moves: "MOV.", score: "PONTOS", record: "RECORDE", settingsTitle: "Definições", share: "Partilhar", rate: "Avaliar", download: "Descarregar HTML", boardSize: "Tamanho:", close: "Fechar", aiModalMsg: "Manter progresso da IA ou reverter?", keep: "Manter", revert: "Reverter", footerText: "Meu projeto no GitHub - ", customTheme: "Tema próprio", createTheme: "Criar tema", themeBg: "Fundo", themeText: "Texto", themeBoard: "Tabuleiro", themeCell: "Célula", themeBtn: "Botões", apply: "Aplicar", cancel: "Cancelar", version: "Versão:" },
+            ar: { flag: "🇸🇦", dir: "rtl", restart: "إعادة البدء", hint: "تلميح", autoPlay: "لعب تلقائي", stopAuto: "إيقاف الذكاء", time: "الوقت", moves: "الحركات", score: "النتيجة", record: "الرقم القياسي", settingsTitle: "الإعدادات", share: "مشاركة", rate: "تقييم", download: "تحميل HTML", boardSize: "الحجم:", close: "إغلاق", aiModalMsg: "حفظ تقدم الذكاء أم التراجع؟", keep: "حفظ", revert: "تراجع", footerText: "مشروعي على جيت هاب - ", customTheme: "سمة مخصصة", createTheme: "إنشاء سمة", themeBg: "الخلفية", themeText: "النص", themeBoard: "اللوحة", themeCell: "خلية", themeBtn: "أزرار", apply: "تطبيق", cancel: "إلغاء", version: "الإصدار:" }
+        };
+
+        let currentLang = 'ru';
+        let size = 4;
+        let board = [];
+        let tiles = []; 
+        let tileIdCounter = 0;
+        
+        let score = 0;
+        let maxTile = 0; 
+        // Record is the highest tile ever collected across all games
+        let bestMaxTile = parseInt(localStorage.getItem('busya2048BestMaxTile')) || 0; 
+        let moves = 0;
+        
+        let startTime = null;
+        let elapsedSeconds = 0;
+        let timerInterval = null;
+        let isGameOver = false;
+        
+        let aiInterval = null;
+        let isAutoPlaying = false;
+        let preAiState = null;
+
+        const gridBg = document.getElementById('gridBg');
+        const tileContainer = document.getElementById('tileContainer');
+        const root = document.documentElement;
+        
+        function buildLangGrid() {
+            const grid = document.getElementById('langGrid');
+            grid.innerHTML = '';
+            for (const [code, data] of Object.entries(i18n)) {
+                const btn = document.createElement('button');
+                btn.className = 'lang-btn';
+                btn.textContent = data.flag;
+                btn.title = code;
+                btn.onclick = () => {
+                    currentLang = code;
+                    applyLanguage();
+                    document.getElementById('langModal').classList.remove('active');
+                };
+                grid.appendChild(btn);
+            }
+        }
+        buildLangGrid();
+
+        function initGame() {
+            root.style.setProperty('--grid-size', size);
+            
+            gridBg.innerHTML = '';
+            for(let i=0; i<size*size; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                gridBg.appendChild(cell);
+            }
+
+            board = Array.from({ length: size }, () => Array(size).fill(0));
+            tiles = [];
+            score = 0;
+            maxTile = 0;
+            moves = 0;
+            elapsedSeconds = 0;
+            isGameOver = false;
+            
+            stopTimer();
+            startTime = null;
+            tileContainer.innerHTML = '';
+            
+            addRandomTile();
+            addRandomTile();
+            
+            updateStatsDOM();
+            renderBoard();
+        }
+
+        function getEmptyCells(currentBoard = board) {
+            const empty = [];
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (currentBoard[r][c] === 0) empty.push({ r, c });
+                }
+            }
+            return empty;
+        }
+
+        function addRandomTile() {
+            const emptyCells = getEmptyCells();
+            if (emptyCells.length > 0) {
+                const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                const val = Math.random() < 0.9 ? 2 : 4;
+                board[randomCell.r][randomCell.c] = val;
+                
+                updateMaxTile(val);
+
+                tiles.push({
+                    id: tileIdCounter++,
+                    val: val,
+                    row: randomCell.r,
+                    col: randomCell.c,
+                    isNew: true
+                });
+            }
+        }
+
+        function updateMaxTile(val) {
+            if (val > maxTile) maxTile = val;
+            if (val > bestMaxTile) {
+                bestMaxTile = val;
+                localStorage.setItem('busya2048BestMaxTile', bestMaxTile);
+                updateStatsDOM();
+            }
+        }
+
+        function move(direction, dryRun = false, currentBoard = board, currentScore = score) {
+            let moved = false;
+            let newScore = currentScore;
+            
+            let tilesToRemove = [];
+            const vector = getVector(direction);
+            const traversals = buildTraversals(vector);
+            
+            if (!dryRun) tiles.forEach(t => { t.isNew = false; t.isMerged = false; });
+
+            traversals.x.forEach(x => {
+                traversals.y.forEach(y => {
+                    const cell = { r: x, c: y };
+                    const tileVal = currentBoard[cell.r][cell.c];
+
+                    if (tileVal !== 0) {
+                        const positions = findFarthestPosition(cell, vector, currentBoard);
+                        const next = positions.next;
+                        const farthest = positions.farthest;
+
+                        if (next.r >= 0 && next.r < size && next.c >= 0 && next.c < size && 
+                            currentBoard[next.r][next.c] === tileVal && 
+                            (!currentBoard[next.r][next.c].merged)) 
+                        {
+                            const mergedVal = tileVal * 2;
+                            currentBoard[next.r][next.c] = { val: mergedVal, merged: true };
+                            currentBoard[cell.r][cell.c] = 0;
+                            newScore += mergedVal;
+                            moved = true;
+                            
+                            if (!dryRun) {
+                                updateMaxTile(mergedVal);
+                                const movingTile = tiles.find(t => t.row === cell.r && t.col === cell.c && !tilesToRemove.includes(t.id));
+                                const targetTile = tiles.find(t => t.row === next.r && t.col === next.c && !tilesToRemove.includes(t.id));
+                                
+                                if (movingTile && targetTile) {
+                                    movingTile.row = next.r; movingTile.col = next.c;
+                                    tilesToRemove.push(movingTile.id, targetTile.id);
+                                    
+                                    tiles.push({
+                                        id: tileIdCounter++, val: mergedVal,
+                                        row: next.r, col: next.c, isMerged: true
+                                    });
+                                }
+                            }
+                        } else if (farthest.r !== cell.r || farthest.c !== cell.c) {
+                            currentBoard[farthest.r][farthest.c] = tileVal;
+                            currentBoard[cell.r][cell.c] = 0;
+                            moved = true;
+                            
+                            if (!dryRun) {
+                                const movingTile = tiles.find(t => t.row === cell.r && t.col === cell.c && !tilesToRemove.includes(t.id));
+                                if (movingTile) { movingTile.row = farthest.r; movingTile.col = farthest.c; }
+                            }
+                        }
+                    }
+                });
+            });
+
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    if (typeof currentBoard[r][c] === 'object') currentBoard[r][c] = currentBoard[r][c].val;
+                }
+            }
+
+            if (moved && !dryRun) {
+                tiles = tiles.filter(t => !tilesToRemove.includes(t.id));
+                score = newScore;
+                moves++;
+                addRandomTile();
+                if (!startTime) startTimer();
+                if (!movesAvailable(board)) { isGameOver = true; stopTimer(); }
+            }
+
+            return { moved, newScore };
+        }
+
+        function getVector(direction) {
+            const map = { 0: { r: -1, c: 0 }, 1: { r: 0, c: 1 }, 2: { r: 1, c: 0 }, 3: { r: 0, c: -1 } };
+            return map[direction];
+        }
+
+        function buildTraversals(vector) {
+            const traversals = { x: [], y: [] };
+            for (let pos = 0; pos < size; pos++) { traversals.x.push(pos); traversals.y.push(pos); }
+            if (vector.r === 1) traversals.x.reverse();
+            if (vector.c === 1) traversals.y.reverse();
+            return traversals;
+        }
+
+        function findFarthestPosition(cell, vector, currentBoard) {
+            let previous;
+            let current = { r: cell.r, c: cell.c };
+            do {
+                previous = current;
+                current = { r: previous.r + vector.r, c: previous.c + vector.c };
+            } while (current.r >= 0 && current.r < size && current.c >= 0 && current.c < size && currentBoard[current.r][current.c] === 0);
+            return { farthest: previous, next: current };
+        }
+
+        function movesAvailable(currentBoard) {
+            if (getEmptyCells(currentBoard).length > 0) return true;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const val = currentBoard[r][c];
+                    if ((r < size - 1 && currentBoard[r + 1][c] === val) || (c < size - 1 && currentBoard[r][c + 1] === val)) return true;
+                }
+            }
+            return false;
+        }
+
+        function renderBoard() {
+            const currentDomIds = Array.from(tileContainer.children).map(el => parseInt(el.dataset.id));
+            const stateIds = tiles.map(t => t.id);
+            
+            currentDomIds.forEach(id => {
+                if (!stateIds.includes(id)) {
+                    const el = document.getElementById(`tile-${id}`);
+                    if (el) el.remove();
+                }
+            });
+
+            const baseFontSize = size <= 4 ? 30 : (size <= 6 ? 20 : 14);
+
+            tiles.forEach(tile => {
+                let el = document.getElementById(`tile-${tile.id}`);
+                let inner = null;
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = `tile-${tile.id}`;
+                    el.dataset.id = tile.id;
+                    el.className = 'tile';
+                    inner = document.createElement('div');
+                    inner.className = 'tile-inner';
+                    el.appendChild(inner);
+                    tileContainer.appendChild(el);
+                } else {
+                    inner = el.querySelector('.tile-inner');
+                }
+
+                el.style.left = `calc((${tile.col} * 100% / ${size}))`;
+                el.style.top = `calc((${tile.row} * 100% / ${size}))`;
+
+                const valClass = tile.val > 2048 ? 'val-super' : `val-${tile.val}`;
+                el.className = `tile ${tile.isNew ? 'tile-new' : ''} ${tile.isMerged ? 'tile-merged' : ''}`;
+                inner.className = `tile-inner ${valClass}`;
+                
+                let fSize = baseFontSize;
+                if(tile.val > 100) fSize *= 0.8;
+                if(tile.val > 1000) fSize *= 0.7;
+                inner.style.fontSize = `${fSize}px`;
+
+                if (tile.isNew) setTimeout(() => el.classList.remove('tile-new'), 200);
+                if (tile.isMerged) setTimeout(() => el.classList.remove('tile-merged'), 200);
+
+                inner.textContent = tile.val;
+            });
+
+            updateStatsDOM();
+        }
+
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            return [h, m, s].map(v => v < 10 ? "0" + v : v).join(":");
+        }
+
+        function updateStatsDOM() {
+            document.getElementById('valScore').textContent = score;
+            document.getElementById('valBestTile').textContent = bestMaxTile;
+            document.getElementById('valMoves').textContent = moves;
+            document.getElementById('valTime').textContent = formatTime(elapsedSeconds);
+        }
+
+        function startTimer() {
+            if (timerInterval) return;
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                document.getElementById('valTime').textContent = formatTime(elapsedSeconds);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        }
+
+        function cloneBoard(b) { return b.map(row => [...row]); }
+
+        function generateWeightMatrix(s) {
+            let matrix = [];
+            for(let r=0; r<s; r++) {
+                let row = [];
+                for(let c=0; c<s; c++) {
+                    let power = (s * s) - (r * s + (r % 2 === 0 ? c : s - 1 - c));
+                    row.push(Math.pow(2, power)); 
+                }
+                matrix.push(row);
+            }
+            return matrix;
+        }
+
+        function evaluateBoard(testBoard, s) {
+            const weights = generateWeightMatrix(s);
+            let score = 0;
+            let emptyCount = 0;
+            for (let r = 0; r < s; r++) {
+                for (let c = 0; c < s; c++) {
+                    const val = testBoard[r][c];
+                    if (val === 0) emptyCount++;
+                    else score += val * weights[r][c];
+                }
+            }
+            return score + (emptyCount * 100000); 
+        }
+
+        function getBestMoveDirection() {
+            let bestScore = -1;
+            let bestDir = -1;
+            for (let dir = 0; dir < 4; dir++) {
+                const testBoard = cloneBoard(board);
+                const result = move(dir, true, testBoard, 0);
+                if (result.moved) {
+                    const evalScore = evaluateBoard(testBoard, size);
+                    if (evalScore > bestScore) {
+                        bestScore = evalScore;
+                        bestDir = dir;
+                    }
+                }
+            }
+            return bestDir !== -1 ? bestDir : Math.floor(Math.random() * 4);
+        }
+
+        function performAiMove() {
+            if (isGameOver) { stopAutoPlay(); return; }
+            const bestDir = getBestMoveDirection();
+            if (bestDir !== -1) {
+                const { moved } = move(bestDir);
+                if (moved) renderBoard();
+            } else { stopAutoPlay(); }
+        }
+
+        function startAutoPlay() {
+            if (isGameOver || isAutoPlaying) return;
+            preAiState = {
+                board: cloneBoard(board),
+                tiles: JSON.parse(JSON.stringify(tiles)),
+                score: score, moves: moves,
+                elapsedSeconds: elapsedSeconds, tileIdCounter: tileIdCounter, maxTile: maxTile
+            };
+            isAutoPlaying = true;
+            updateControlsVisibility();
+            aiInterval = setInterval(() => { performAiMove(); }, 200); 
+        }
+
+        function stopAutoPlay() {
+            if (!isAutoPlaying) return;
+            isAutoPlaying = false;
+            clearInterval(aiInterval);
+            aiInterval = null;
+            updateControlsVisibility();
+            
+            if (preAiState && moves > preAiState.moves) {
+                document.getElementById('aiModal').classList.add('active');
+            }
+        }
+
+        function revertToPreAiState() {
+            if (preAiState) {
+                board = preAiState.board; tiles = preAiState.tiles;
+                score = preAiState.score; moves = preAiState.moves;
+                elapsedSeconds = preAiState.elapsedSeconds; tileIdCounter = preAiState.tileIdCounter;
+                maxTile = preAiState.maxTile;
+                isGameOver = false;
+                tileContainer.innerHTML = '';
+                renderBoard();
+                if (moves > 0 && !isGameOver) startTimer(); else stopTimer();
+            }
+            document.getElementById('aiModal').classList.remove('active');
+            preAiState = null;
+        }
+
+        function applyLanguage() {
+            const dict = i18n[currentLang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) el.textContent = dict[key];
+            });
+            document.getElementById('btnLang').textContent = dict.flag;
+            document.body.setAttribute('dir', dict.dir || 'ltr');
+            localStorage.setItem('busya2048Lang', currentLang);
+        }
+
+        let themeMode = 'light'; // light, dark, custom
+
+        function clearCustomThemeStyles() {
+            root.style.removeProperty('--bg-body');
+            root.style.removeProperty('--text-main');
+            root.style.removeProperty('--bg-board');
+            root.style.removeProperty('--bg-cell-empty');
+            root.style.removeProperty('--bg-btn');
+        }
+
+        function applyCustomColors() {
+            const colors = JSON.parse(localStorage.getItem('busya2048CustomColors'));
+            if(colors) {
+                root.style.setProperty('--bg-body', colors.bg);
+                root.style.setProperty('--text-main', colors.text);
+                root.style.setProperty('--bg-board', colors.board);
+                root.style.setProperty('--bg-cell-empty', colors.cell);
+                root.style.setProperty('--bg-btn', colors.btn);
+            }
+        }
+
+        function toggleTheme() {
+            if (themeMode === 'light') {
+                themeMode = 'dark';
+                root.setAttribute('data-theme', 'dark');
+                document.getElementById('btnTheme').textContent = '🌙';
+                clearCustomThemeStyles();
+            } else if (themeMode === 'dark') {
+                themeMode = 'custom';
+                root.setAttribute('data-theme', 'custom');
+                document.getElementById('btnTheme').textContent = '🎨';
+                if(!localStorage.getItem('busya2048CustomColors')) {
+                    document.getElementById('customThemeModal').classList.add('active');
+                } else {
+                    applyCustomColors();
+                }
+            } else {
+                themeMode = 'light';
+                root.setAttribute('data-theme', 'light');
+                document.getElementById('btnTheme').textContent = '☀️';
+                clearCustomThemeStyles();
+            }
+            localStorage.setItem('busya2048Theme', themeMode);
+        }
+
+        function updateControlsVisibility() {
+            document.getElementById('btnRestart').classList.toggle('hidden', isAutoPlaying);
+            document.getElementById('btnHint').classList.toggle('hidden', isAutoPlaying);
+            document.getElementById('btnAuto').classList.toggle('hidden', isAutoPlaying);
+            document.getElementById('btnStopAuto').classList.toggle('hidden', !isAutoPlaying);
+        }
+
+        function handleInput(dir) {
+            if (isGameOver || isAutoPlaying) return;
+            const { moved } = move(dir);
+            if (moved) requestAnimationFrame(() => renderBoard());
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+            switch (e.key) {
+                case 'ArrowUp': case 'w': case 'W': handleInput(0); break;
+                case 'ArrowRight': case 'd': case 'D': handleInput(1); break;
+                case 'ArrowDown': case 's': case 'S': handleInput(2); break;
+                case 'ArrowLeft': case 'a': case 'A': handleInput(3); break;
+            }
+        });
+
+        let touchStartX = 0; let touchStartY = 0;
+        const boardArea = document.getElementById('boardArea');
+        boardArea.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, {passive: false});
+        boardArea.addEventListener('touchmove', e => { e.preventDefault(); }, {passive: false}); 
+        boardArea.addEventListener('touchend', e => {
+            if (isGameOver || isAutoPlaying) return;
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) > 30) {
+                if (Math.abs(dx) > Math.abs(dy)) handleInput(dx > 0 ? 1 : 3);
+                else handleInput(dy > 0 ? 2 : 0);
+            }
+        });
+
+        document.getElementById('btnRestart').addEventListener('click', () => initGame());
+        document.getElementById('btnHint').addEventListener('click', () => { if (!isGameOver && !isAutoPlaying) performAiMove(); });
+        document.getElementById('btnAuto').addEventListener('click', startAutoPlay);
+        document.getElementById('btnStopAuto').addEventListener('click', stopAutoPlay);
+        
+        document.getElementById('btnLang').addEventListener('click', () => document.getElementById('langModal').classList.add('active'));
+        document.getElementById('btnCloseLang').addEventListener('click', () => document.getElementById('langModal').classList.remove('active'));
+        document.getElementById('btnTheme').addEventListener('click', toggleTheme);
+        
+        document.getElementById('btnKeepAi').addEventListener('click', () => { document.getElementById('aiModal').classList.remove('active'); preAiState = null; });
+        document.getElementById('btnRevertAi').addEventListener('click', revertToPreAiState);
+
+        const settingsModal = document.getElementById('settingsModal');
+        document.getElementById('btnSettings').addEventListener('click', () => settingsModal.classList.add('active'));
+        document.getElementById('btnCloseSettings').addEventListener('click', () => settingsModal.classList.remove('active'));
+
+        document.getElementById('sizeSelector').addEventListener('change', (e) => {
+            size = parseInt(e.target.value);
+            initGame();
+        });
+        
+        const customThemeModal = document.getElementById('customThemeModal');
+        document.getElementById('btnOpenThemeModal').addEventListener('click', () => {
+            settingsModal.classList.remove('active');
+            customThemeModal.classList.add('active');
+            
+            // load existing if any
+            const colors = JSON.parse(localStorage.getItem('busya2048CustomColors'));
+            if(colors) {
+                document.getElementById('colorBg').value = colors.bg;
+                document.getElementById('colorText').value = colors.text;
+                document.getElementById('colorBoard').value = colors.board;
+                document.getElementById('colorCell').value = colors.cell;
+                document.getElementById('colorBtn').value = colors.btn;
+            }
+        });
+        
+        document.getElementById('btnCancelTheme').addEventListener('click', () => {
+            customThemeModal.classList.remove('active');
+            settingsModal.classList.add('active');
+        });
+        
+        document.getElementById('btnApplyTheme').addEventListener('click', () => {
+            const colors = {
+                bg: document.getElementById('colorBg').value,
+                text: document.getElementById('colorText').value,
+                board: document.getElementById('colorBoard').value,
+                cell: document.getElementById('colorCell').value,
+                btn: document.getElementById('colorBtn').value
+            };
+            localStorage.setItem('busya2048CustomColors', JSON.stringify(colors));
+            
+            themeMode = 'custom';
+            root.setAttribute('data-theme', 'custom');
+            document.getElementById('btnTheme').textContent = '🎨';
+            localStorage.setItem('busya2048Theme', 'custom');
+            applyCustomColors();
+            
+            customThemeModal.classList.remove('active');
+        });
+
+        document.getElementById('btnShare').addEventListener('click', () => {
+            const shareText = "Привет! Нашёл крутую игру 2048 без рекламы! Скачивай с GitHub - https://github.com/berestnevnikolaj671-kot/Busya-2048-game";
+            if (navigator.share) {
+                navigator.share({ text: shareText }).catch(err => console.log('Share error:', err));
+            } else {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    const btn = document.getElementById('btnShare');
+                    const orig = btn.innerText;
+                    btn.innerText = currentLang === 'ru' ? "Скопировано!" : "Copied!";
+                    setTimeout(() => btn.innerText = orig, 2000);
+                });
+            }
+        });
+
+        document.getElementById('btnRate').addEventListener('click', () => {
+            window.open('https://forms.gle/HBbyZFPg5QtXvBi36', '_blank');
+        });
+
+        document.getElementById('btnDownload').addEventListener('click', () => {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Busya2048.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        let versionClicks = 0;
+        let lastVersionClickTime = 0;
+        document.getElementById('versionText').addEventListener('click', () => {
+            const now = Date.now();
+            if (now - lastVersionClickTime > 1000) versionClicks = 0; 
+            lastVersionClickTime = now;
+            versionClicks++;
+            
+            if (versionClicks === 7) {
+                versionClicks = 0;
+                settingsModal.classList.remove('active');
+                const egg = document.getElementById('easterEgg');
+                egg.style.display = 'flex';
+                setTimeout(() => { egg.style.display = 'none'; }, 5000);
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('busya2048Lang');
+            if(savedLang && i18n[savedLang]) {
+                currentLang = savedLang;
+            } else {
+                currentLang = 'ru';
+            }
+            applyLanguage();
+
+            const savedTheme = localStorage.getItem('busya2048Theme');
+            if (savedTheme) {
+                themeMode = savedTheme;
+                if(themeMode === 'custom') {
+                    root.setAttribute('data-theme', 'custom');
+                    document.getElementById('btnTheme').textContent = '🎨';
+                    applyCustomColors();
+                } else {
+                    root.setAttribute('data-theme', savedTheme);
+                    document.getElementById('btnTheme').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+                }
+            }
+            
+            initGame();
+        });
+
+    </script>
+</body>
+</html>
